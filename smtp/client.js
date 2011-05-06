@@ -2,8 +2,10 @@ var smtp 		= require('./smtp');
 var smtpError 	= require('./error');
 var message		= require('./message');
 var address		= require('./address');
+var oil		= require("mysql-oil");
+var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-var Client = function(server)
+var Client = function(server, db_config)
 {
 	this.smtp			= new smtp.SMTP(server);
 
@@ -12,6 +14,11 @@ var Client = function(server)
 	this.queue			= [];
 	this.timer			= null;
 	this.sending		= false;
+
+  if (typeof(db_config)==='object')
+    oil = oil.connect(db_config);
+  else
+    throw(new Error("missing db config"));
 };
 
 Client.prototype = 
@@ -79,7 +86,8 @@ Client.prototype =
 				message:		msg,
 				to:			address.parse(msg.header["to"]),
 				from:			address.parse(msg.header["from"])[0].address,
-				callback:	callback || function() {}
+				callback:	callback || function() {},
+        uuid: msg.header["uuid"] ? msg.header["uuid"] : ''
 			};
 
 			if(msg.header["cc"])
@@ -88,13 +96,32 @@ Client.prototype =
 			if(msg.header["bcc"])
 				stack.to = stack.to.concat(address.parse(msg.header["bcc"]));
 
-			self.queue.push(stack);
-			self._poll();
+      oil({ insert_into: 'mailqueue_stores',
+            values: { created_at: 'DATE(NOW)',
+                      uuid: stack.uuid,
+                      content: JSON.stringify(stack)
+                    },
+            cb: __bind(function(err,info)
+            {
+              if(!err)
+              {
+                stack["db_id"] = info.insertId;
+                self.queue.push(stack);
+                self._poll();
+              }
+              else
+              {
+                console.log( err )
+                console.log( info )
+                callback({code:-1, message:"couldn't store into the database"}, msg);
+              }
+            })
+      });
+			
 		}
 		else
 			callback({code:-1, message:"message is not a valid Message instance"}, msg);
 	},
-
 	_sendsmtp: function(stack, next)
 	{
 		var self	= this;
@@ -112,9 +139,9 @@ Client.prototype =
 
 	_sendmail: function(stack)
 	{
-		var self = this;
-		self.sending = true;
-		self.smtp.mail(self._sendsmtp(stack, self._sendrcpt), '<' + stack.from + '>');
+    var self = this;
+    self.sending = true;
+    self.smtp.mail(self._sendsmtp(stack, self._sendrcpt), '<' + stack.from + '>');
 	},
 
 	_sendrcpt: function(stack)
@@ -140,17 +167,23 @@ Client.prototype =
 
 	_senddone: function(stack)
 	{
-		var self = this;
-
-		self.sending = false;
-		stack.callback(null, stack.message);
-		self._poll();
-	}
+    oil({ update: 'mailqueue_stores',
+      values: { send_at: 'DATE(NOW)' },
+      where: ['id = ?', stack.db_id],
+      cb: __bind(function(err,rows){
+        var self = this;
+        self.sending = false;
+        stack.callback(null, stack.message);
+        self._poll();
+      })
+    });
+  }
 };
 
 exports.Client = Client;
 
-exports.connect = function(server)
+exports.connect = function(server, dbconfig)
 {
-	return new Client(server);
+	return new Client(server, dbconfig);
 }
+

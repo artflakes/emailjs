@@ -17,6 +17,7 @@ send emails, html and attachments from node.js to any smtp server
 
 # REQUIRES
  - access to an SMTP Server (ex: gmail)
+ - mysql-oil for queue persistance
 
 # EXAMPLE USAGE - text only emails
 
