@@ -96,7 +96,7 @@ Client.prototype =
 			if(msg.header["bcc"])
 				stack.to = stack.to.concat(address.parse(msg.header["bcc"]));
 
-      oil({ insert_into: 'mailqueue_stores',
+      oil({ insert_into: 'mailqueue',
             values: { created_at: 'DATE(NOW)',
                       uuid: stack.uuid,
                       content: JSON.stringify(stack)
@@ -167,7 +167,7 @@ Client.prototype =
 
 	_senddone: function(stack)
 	{
-    oil({ update: 'mailqueue_stores',
+    oil({ update: 'mailqueue',
       values: { send_at: 'DATE(NOW)' },
       where: ['id = ?', stack.db_id],
       cb: __bind(function(err,rows){
