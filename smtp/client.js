@@ -4,6 +4,28 @@ var message		= require('./message');
 var address		= require('./address');
 var oil		= require("mysql-oil");
 var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+/*
+__UTC__ version for
+  [formatting Date for mySQL](https://github.com/rentzsch/node-mysql-oil/blob/master/lib/node-mysql-oil.js#L237)
+  heavily modified
+*/  
+var dbTimestamp = function() {
+  var date, day, month, time, zero, x;
+  x = new Date();
+  zero = function(n) {
+    if (n > 9) {
+      return n;
+    } else {
+      return "0" + n;
+    }
+  };
+  month = x.getUTCMonth() + 1;
+  day = x.getUTCDate();
+  date = "" + (x.getUTCFullYear()) + "-" + (zero(month)) + "-" + (zero(day));
+  time = "" + (zero(x.getUTCHours())) + ":" + (zero(x.getUTCMinutes())) + ":" + (zero(x.getUTCSeconds()));
+  return "" + date + " " + time;
+};
+
 
 var Client = function(server, db_config)
 {
@@ -97,7 +119,7 @@ Client.prototype =
 				stack.to = stack.to.concat(address.parse(msg.header["bcc"]));
 
       oil({ insert_into: 'mailqueue',
-            values: { created_at: 'DATE(NOW)',
+            values: { created_at: dbTimestamp(),
                       uuid: stack.uuid,
                       content: JSON.stringify(stack)
                     },
@@ -168,15 +190,14 @@ Client.prototype =
 	_senddone: function(stack)
 	{
     oil({ update: 'mailqueue',
-      values: { send_at: 'DATE(NOW)' },
+      values: { send_at: dbTimestamp() },
       where: ['id = ?', stack.db_id],
-      cb: __bind(function(err,rows){
-        var self = this;
+      cb: function(err,rows){}
+    });
+    var self = this;
         self.sending = false;
         stack.callback(null, stack.message);
         self._poll();
-      })
-    });
   }
 };
 
