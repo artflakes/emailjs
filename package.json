@@ -1,14 +1,8 @@
 {
-  "name": 			"emailjs",
+  "name": 			"emailjs-oil",
   "description": 	"send text/html emails and attachments from node.js to any smtp server",
   "version": 		"0.1.8-1artflakes",
-  "author": 		"eleith",
-  "contributors":	["izuzak"],
-  "repository": 
-  {
-    "type": "git",
-    "url": "http://github.com/eleith/emailjs.git"
-  },
+  "author": 		"sasser <graveyard@artflakes.com>",
   "dependencies": {},
   "engine": 		["node >= 0.3.8"],
   "main": 			"email"
