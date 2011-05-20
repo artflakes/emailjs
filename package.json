@@ -1,7 +1,7 @@
 {
   "name": 			"emailjs-oil",
   "description": 	"send text/html emails and attachments from node.js to any smtp server",
-  "version": 		"0.1.8-1artflakes",
+  "version": 		"0.1.8-2artflakes",
   "author": 		"sasser <graveyard@artflakes.com>",
   "dependencies": {},
   "engine": 		["node >= 0.3.8"],
