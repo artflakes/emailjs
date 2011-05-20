@@ -2,7 +2,6 @@ var smtp     = require('./smtp');
 var smtpError   = require('./error');
 var message    = require('./message');
 var address    = require('./address');
-var oil    = require("mysql-oil");
 var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 /*
 __UTC__ version for
@@ -27,7 +26,7 @@ var dbTimestamp = function() {
 };
 
 
-var Client = function(server, db_config)
+var Client = function(server, dbConfig)
 {
   this.smtp      = new smtp.SMTP(server);
 
@@ -37,8 +36,8 @@ var Client = function(server, db_config)
   this.timer      = null;
   this.sending    = false;
 
-  if (typeof(db_config)==='object')
-    oil = oil.connect(db_config);
+  if (typeof(dbConfig)==='object')
+    this.oil =  require("mysql-oil").connect(dbConfig);
   else
     throw(new Error("missing db config"));
 };
@@ -118,7 +117,7 @@ Client.prototype =
       if(msg.header["bcc"])
         stack.to = stack.to.concat(address.parse(msg.header["bcc"]));
 
-      oil({ insert_into: 'mailqueue',
+      this.oil({ insert_into: 'mailqueue',
             values: { created_at: dbTimestamp(),
                       uuid: stack.uuid,
                       content: JSON.stringify(stack)
@@ -128,6 +127,8 @@ Client.prototype =
               if(!err)
               {
                 stack["db_id"] = info.insertId;
+                self.queue.push(stack);
+                self._poll();
               }
               else
               {
@@ -138,8 +139,6 @@ Client.prototype =
             })
       });
       
-      self.queue.push(stack);
-      self._poll();
     }
     else
       callback({code:-1, message:"message is not a valid Message instance"}, msg);
@@ -189,7 +188,7 @@ Client.prototype =
 
   _senddone: function(stack)
   {
-    oil({ update: 'mailqueue',
+    this.oil({ update: 'mailqueue',
       values: { send_at: dbTimestamp() },
       where: ['id = ?', stack.db_id],
       cb: function(err,rows){}
