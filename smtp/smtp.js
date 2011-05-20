@@ -191,8 +191,8 @@ SMTP.prototype =
 		}
 		else
 		{
-			self.sock = new net.Socket();
-			self.sock.connect(self.port, self.host, connected);
+			self.sock = net.createConnection(self.port, self.host);
+      self.sock.on('connect', connected);
 		}
 
 		connect_timeout = setTimeout(timedout, self.timeout);
